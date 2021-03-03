@@ -198,6 +198,84 @@ def scramble_img(img,mask_img,random_state=None):
     return img_scrambled
 
 
+def _get_voxel_volume(voxel_sizes) :  
+    result = 1 
+    for dim in voxel_sizes:  
+        result *= dim
+    return result
+
+def cluster_binary_img(binary_img,mask_img,min_region_size='exhaustive'):
+
+    # get voxel resolution in binary_img
+    # NOTE: function currently assumes equal width in x,y,z direction
+    voxel_sizes = binary_img.header.get_zooms()
+    
+    # if not specfied by user, cluster exhaustive, i.e. assign each and every
+    # voxel to one and only one cluster
+    if min_region_size == 'exhaustive':
+        min_region_size_ = _get_voxel_volume(voxel_sizes) - 1
+    else:
+        min_region_size_ = min_region_size
+    
+    # count overall number of 1s in the binary image
+    total_n_voxels = np.count_nonzero(binary_img.get_fdata())
+    
+    # extract clusters in binary image
+    cluster_imgs,indices = connected_regions(maps_img=binary_img,
+                                             min_region_size=min_region_size_,
+                                             extract_type='connected_components',
+                                             smoothing_fwhm=None,
+                                             mask_img=mask_img)
+    
+    
+    # Get sizes of clusters (number of voxels that have been assigned to each region)
+    # As a sanity check + for user information get size of every region and 
+    # count overall number of voxels that have been assigned to that region
+    cluster_sizes = []
+    total_n_voxels_assigned = 0
+    
+    for idx,cluster_img in enumerate(iter_img(cluster_imgs)):
+        cluster_img_data = cluster_img.get_fdata()    
+        cluster_img_size = np.count_nonzero(cluster_img_data)
+        cluster_sizes.append(cluster_img_size)
+        total_n_voxels_assigned += cluster_img_size
+    
+    if total_n_voxels_assigned != total_n_voxels:
+        raise ValueError('Number of voxels in output clustered image is different from total number of voxels in input binary image ')
+        
+    # Collapse the extracted cluster images to one cluster atlas image
+    cluster_imgs_labeled = []
+    
+    for idx,cluster_img in enumerate(iter_img(cluster_imgs),start=1):
+        cluster_img_labeled = math_img(f"np.where(cluster_img == 1,{idx},cluster_img)",cluster_img=cluster_img)
+        cluster_imgs_labeled.append(cluster_img_labeled)
+        
+    cluster_img_atlas = math_img("np.sum(imgs,axis=3)",imgs=cluster_imgs_labeled)
+    
+    # plot the cluster atlas image 
+    plotting.plot_roi(cluster_img_atlas,
+                      title='Clustered Binary Image',
+                      cut_coords=[0,0,0],
+                      draw_cross=False)
+    
+    return cluster_sizes
+
+def swap_img_data(img,mask_img,absolute_values=True):
+    '''Swap data in a nifti image. User can choose to do swapping by taking
+    the real or absolute values in the image into account'''
+    
+    img_data = apply_mask(img,mask_img)
+    
+    if absolute_values == True:
+        map_dict = dict(zip(sorted(set(img_data),key=abs),sorted(set(img_data),key=abs,reverse=True)))
+    else:
+        map_dict = dict(zip(sorted(set(img_data)),sorted(set(img_data),reverse=True)))
+    
+    img_data_swapped = np.array([map_dict[x] for x in img_data])
+    img_swapped = unmask(img_data_swapped,mask_img)
+    
+    return img_swapped
+
 if __name__ == '__main__':
     pass
 
