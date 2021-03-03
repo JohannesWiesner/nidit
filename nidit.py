@@ -7,11 +7,10 @@ Created on Mon Feb 10 14:03:14 2020
 """
 
 import numpy as np
-
-from nilearn.image import new_img_like, iter_img
+from nilearn.image import new_img_like, iter_img, math_img
 from nilearn.masking import apply_mask,unmask
 from nilearn.regions import connected_regions
-
+from nilearn import plotting
 from sklearn.utils import check_random_state
 
 def region_standardize(stat_img,mask_img,extract_type='connected_components',min_region_size=1,
@@ -196,7 +195,6 @@ def scramble_img(img,mask_img,random_state=None):
     img_scrambled = unmask(img_data_scrambled,mask_img)
     
     return img_scrambled
-
 
 def _get_voxel_volume(voxel_sizes) :  
     result = 1 
