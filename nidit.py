@@ -253,10 +253,9 @@ def cluster_binary_img(binary_img,mask_img,min_region_size='exhaustive'):
     # plot the cluster atlas image 
     plotting.plot_roi(cluster_img_atlas,
                       title='Clustered Binary Image',
-                      cut_coords=[0,0,0],
                       draw_cross=False)
     
-    return cluster_sizes
+    return cluster_sizes,cluster_img_atlas
 
 def swap_img_data(img,mask_img,absolute_values=True):
     '''Swap data in a nifti image. User can choose to do swapping by taking
